@@ -1,4 +1,4 @@
-import { ClientClass, ClientDatabase, IEmail } from '../../models/client';
+import { ClientClass, ClientDatabase } from '../../models/client';
 
 // Initialize the client database
 const clientDB = new ClientDatabase();
@@ -46,7 +46,6 @@ function loadClients() {
 function renderClientList() {
     if (clientList) {
         clientList.innerHTML = clientDB.renderClientList();
-
     }
     console.log(clientDB.renderClientList())
 }
@@ -104,7 +103,12 @@ function selectClient(uid: string) {
         clientNameInput.value = currentClient.name || '';
         clientFileAsInput.value = currentClient.file_as || '';
         clientStatusSelect.value = currentClient.status || 'active';
-        clientEmailsTextarea.value = currentClient.getEmailsAsText();
+        
+        // Display emails as line-separated list
+        clientEmailsTextarea.value = Array.isArray(currentClient.emails) 
+            ? currentClient.emails.join('\n') 
+            : '';
+            
         clientDescriptionTextarea.value = currentClient.description || '';
         clientReferalInput.value = currentClient.referal_source || '';
         
@@ -153,15 +157,26 @@ function saveClient() {
         // Update existing client
         console.log("Updating existing client", currentClient.uid);
         Object.assign(currentClient, clientData);
-        currentClient.setEmailsFromText(clientEmailsTextarea.value);
+        
+        // Parse emails from textarea (one email per line)
+        const emailsText = clientEmailsTextarea.value.trim();
+        currentClient.emails = emailsText 
+            ? emailsText.split('\n').map(email => email.trim()).filter(email => email)
+            : [];
+            
         currentClient.updated_at = new Date();
         clientDB.updateClient(currentClient);
     } else {
         // Create new client
         console.log("Creating new client");
+        
+        // Add emails array to client data
+        const emailsText = clientEmailsTextarea.value.trim();
+        clientData['emails'] = emailsText 
+            ? emailsText.split('\n').map(email => email.trim()).filter(email => email)
+            : [];
+            
         currentClient = clientDB.addClient(clientData);
-        currentClient.setEmailsFromText(clientEmailsTextarea.value);
-        clientDB.updateClient(currentClient);
     }
     
     // Update UI

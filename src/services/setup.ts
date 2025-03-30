@@ -1,5 +1,6 @@
 // Function to write client contacts to localStorage
 //@ts-nocheck
+
 function writeClientsToLocalStorage() {
     // Format the clients correctly
     const clients = [];
@@ -180,13 +181,7 @@ function writeClientsToLocalStorage() {
         uid: generateUID(),
         name: contact.name,
         file_as: fileAs,
-        emails: [{
-          address: contact.email,
-          name: contact.name,
-          role: contact.entity === "Company" ? "Main Contact" : "Client",
-          principal: true,
-          primary: true
-        }],
+        emails: [contact.email], // Now using an array of email strings
         phone: "",
         description: `${contact.entity} client`,
         created_at: new Date().toISOString(),

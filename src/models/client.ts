@@ -23,7 +23,7 @@ export class ClientClass{
     uid: string;
     name: string;
     file_as: string;
-    emails: IEmail[]; // Array of email addresses associated with the client
+    emails: string[]; // Array of email addresses associated with the client
     phone: string;
     description: string;
     created_at: Date;
@@ -36,20 +36,18 @@ export class ClientClass{
         
         // Assign all properties directly without hasOwnProperty check
         Object.assign(this, data);
+        console.log(this.emails)
     }
 
     getPrimaryEmail(): IEmail | undefined {
-        return this.emails.find(email => email.primary);
+        if(this.emails){
+            return(this.emails[0])
+            }
     }
 
     setPrimaryEmail(emailAddress: string):void {
-        // Set the primary email based on the provided email address
-        for (let email of this.emails) {
-            if (email.address === emailAddress) {
-                email.primary = true; // Set this email as primary
-            } else {
-                email.primary = false; // Set all other emails as non-primary
-            }
+        if(this.emails){
+        console.log(this.emails[0])
         }
     }
     
