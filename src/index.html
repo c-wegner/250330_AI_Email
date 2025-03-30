@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <title>Microsoft Email Fetcher</title>
+    <link rel="stylesheet" href="styles/styles.css">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="\" class="navbar-link">
+                <span class="material-symbols-outlined">
+                    home
+                </span>
+                </div>
+                <a href="clients/edit.html" class="navbar-link">
+                    <span class="material-symbols-outlined">
+                        group
+                    </span>
+                    </div>
+        </nav>
+    </header>
+    <div class="container">
+        <h1>Microsoft Email Fetcher</h1>
+        <div id="loginSection">
+            <button id="loginButton">Sign in with Microsoft</button>
+        </div>
+        <div id="emailSection" style="display: none;">
+            <button id="fetchEmailsButton">Fetch Emails</button>
+            <div id="loadingSpinner" style="display: none;">Loading...</div>
+            <div id="emailList"></div>
+        </div>
+    </div>
+
+    <!-- Microsoft Authentication Library -->
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+
+    <!-- App Scripts -->
+    <script src="services/auth.ts"></script>
+    <script src="services/email.ts"></script>
+    <script src="services/setup.ts"></script>
+</body>
+
+</html>

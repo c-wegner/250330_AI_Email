@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <title>Microsoft Email Fetcher</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/edit.css">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="\" class="navbar-link">
+                <span class="material-symbols-outlined">
+                    home
+                </span>
+            </a>
+            <a href="edit.html" class="navbar-link">
+                <span class="material-symbols-outlined">
+                    group
+                </span>
+            </a>
+        </nav>
+    </header>
+    <div class="content">
+        <div class="panel-sm">
+            <div class="edit-card">
+                <div id="client_list"></div>
+            </div>
+        </div>
+        <div class="panel-lg">
+            <div class="edit-card client-edit-card">
+                <div class="edit-row">
+                    <div class="edit-client" id="client_edit">
+                        <span class="material-symbols-outlined">
+                            edit_square
+                        </span>
+                    </div>
+                    <div class="edit-client" id="client_clear">
+                        <span class="material-symbols-outlined">
+                            person_cancel
+                        </span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <label for="client_name">Client name</label>
+                        <input type="text" id="client_name" placeholder="Enter client name">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col" style="width: 70%">
+                        <label for="client_file_as">File as</label>
+                        <input type="text" id="client_file_as" placeholder="Enter client name">
+                    </div>
+                    <div class="col" style="width: 30%">
+                        <label for="client_status">Status</label>
+                        <select id="client_status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="terminated">Terminated</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <label for="client_emails">Emails</label>
+                        <textarea style="resize: none;" id="client_emails" rows="4"
+                            placeholder="Enter email addresses (one per line)" rows="4" style="width: 100%;"></textarea>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <label for="client_description">Description</label>
+                        <textarea style="resize: none;" id="client_description" rows="4" placeholder="Describe client"
+                            rows="4" style="width: 100%;"></textarea>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <label for="client_referal">Referal source</label>
+                        <input type="text" id="client_referal" placeholder="Enter client name">
+                     </div>
+                </div>
+                <div class="row">
+                    <div class="col btn-col">
+                        <button id="client_save" class="save-button">Save Client</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/edit.ts"></script>
+</body>
+</html>
