@@ -14,27 +14,16 @@ document.getElementById("fetchEmailsButton").addEventListener("click", async () 
 
         // Fetch both sent and received emails
         const sentEmails = await fetchAllSentEmails();
-        console.log(`Fetched ${sentEmails.length} sent emails`);
         
         const receivedEmails = await fetchEmails();
-        console.log(`Fetched ${receivedEmails.length} received emails`);
         
         // Check if receivedEmails has data
-        if (receivedEmails && receivedEmails.length > 0) {
-            console.log('First received email:', {
-                subject: receivedEmails[0].subject,
-                from: receivedEmails[0].from?.emailAddress?.address,
-                received: receivedEmails[0].receivedDateTime
-            });
-        } else {
-            console.log('No received emails found');
-        }
+
         
         // Process the emails into client packages
         const clientPackages = processClientEmails(sentEmails, receivedEmails, clientDB);
         
         // Log the results
-        console.log(`Found ${clientPackages.length} clients with email activity`);
         
         // Return the client packages
         return clientPackages;
@@ -44,7 +33,7 @@ document.getElementById("fetchEmailsButton").addEventListener("click", async () 
 });
 // Fetch emails from Microsoft Graph API using an array of client emails
 
-async function fetchEmails() {
+export async function fetchEmails() {
     try {
         // Show loading spinner
         document.getElementById("loadingSpinner").style.display = "block";
@@ -98,7 +87,7 @@ async function fetchEmails() {
 
 
 // Fetch all sent emails from the last 10 days
-async function fetchAllSentEmails() {
+export async function fetchAllSentEmails() {
     try {
         // Get access token
         const accessToken = await getAccessToken();
@@ -132,8 +121,6 @@ async function fetchAllSentEmails() {
             sentEmails = [...sentEmails, ...data.value];
             nextLink = data["@odata.nextLink"] || null;
         }
-
-        console.log(`Fetched ${sentEmails.length} sent emails`);
         displayEmails(sentEmails);
         return sentEmails; // Return the emails instead of displaying them
 
@@ -185,7 +172,9 @@ function stripHtml(html) {
 }
 
 // Display emails in the UI
+// Display emails in the UI grouped by client packages
 function displayEmails(emails) {
+    console.log(emails)
     const emailListElement = document.getElementById("emailList");
 
     if (emails.length === 0) {
@@ -193,25 +182,70 @@ function displayEmails(emails) {
         return;
     }
 
-    let emailsHtml = "";
-
-    emails.forEach(email => {
-        const receivedDate = new Date(email.receivedDateTime || email.sentDateTime);
-        const formattedDate = receivedDate.toLocaleString();
-        const sender = email.from?.emailAddress?.name || email.from?.emailAddress?.address || "Unknown";
-        const plainTextBody = stripHtml(email.body?.content || "");
-
-        emailsHtml += `
-            <div class="email-item">
-                <div class="email-subject">${escapeHtml(email.subject || "(No subject)")}</div>
-                <div class="email-sender">From: ${escapeHtml(sender)}</div>
-                <div class="email-time">${formattedDate}</div>
-                <div class="email-body">${escapeHtml(plainTextBody)}</div>
+    // Get client packages
+    const clientDB = new ClientDatabase();
+    clientDB.load();
+    const clientPackages = processClientEmails(emails, emails, clientDB);
+    
+    let packagesHtml = "";
+    
+    // If we have client packages, display them
+    if (clientPackages && clientPackages.length > 0) {
+        packagesHtml += `<div>Found ${clientPackages.length} clients with email activity</div>`;
+        
+        clientPackages.forEach((pkg, index) => {
+            packagesHtml += `
+            <div>
+                <h3>Client Package ${index + 1}: ${escapeHtml(pkg.principalName)} (${escapeHtml(pkg.principalEmail)})</h3>
+                
+                <div>
+                    <p>Emails From Client: ${pkg.emailsFrom.length}</p>
+                    <ul>
+            `;
+            
+            if (pkg.emailsFrom && pkg.emailsFrom.length > 0) {
+                pkg.emailsFrom.forEach((email, i) => {
+                    packagesHtml += `
+                    <li>
+                        ${escapeHtml(email.subject)} (${new Date(email.dateReceived).toLocaleDateString()})
+                    </li>`;
+                });
+            } else {
+                packagesHtml += `<li>No emails from client</li>`;
+            }
+            
+            packagesHtml += `
+                    </ul>
+                </div>
+                
+                <div>
+                    <p>Emails To Client: ${pkg.emailsTo.length}</p>
+                    <ul>
+            `;
+            
+            if (pkg.emailsTo && pkg.emailsTo.length > 0) {
+                pkg.emailsTo.forEach((email, i) => {
+                    packagesHtml += `
+                    <li>
+                        ${escapeHtml(email.subject)} (${new Date(email.dateSent || email.dateReceived).toLocaleDateString()})
+                    </li>`;
+                });
+            } else {
+                packagesHtml += `<li>No emails to client</li>`;
+            }
+            
+            packagesHtml += `
+                    </ul>
+                </div>
             </div>
-        `;
-    });
+            <hr>`;
+        });
+    } else {
+        // No client packages found
+        packagesHtml = "<p>No client email packages found.</p>";
+    }
 
-    emailListElement.innerHTML = emailsHtml;
+    emailListElement.innerHTML = packagesHtml;
 }
 
 // Helper function to escape HTML

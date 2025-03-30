@@ -8,7 +8,6 @@ function writeClientsToLocalStorage() {
     
       // If clients already exist, don't overwrite them
       if (existingClientsData && JSON.parse(existingClientsData).length > 0) {
-          console.log("Clients already exist in localStorage. Skipping import.");
           return JSON.parse(existingClientsData);
       }
     // Format the clients correctly
@@ -207,7 +206,6 @@ function writeClientsToLocalStorage() {
     
     // Save to localStorage
     localStorage.setItem('clientBook', JSON.stringify(clients));
-    console.log(`Saved ${clients.length} clients to localStorage`);
     
     return clients;
   }

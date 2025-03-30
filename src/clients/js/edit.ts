@@ -47,7 +47,7 @@ function renderClientList() {
     if (clientList) {
         clientList.innerHTML = clientDB.renderClientList();
     }
-    console.log(clientDB.renderClientList())
+
 }
 
 // Setup event listeners
@@ -85,7 +85,6 @@ function setupEventListeners() {
 
 // Select a client
 function selectClient(uid: string) {
-    console.log("Selecting client", uid);
     
     // Remove selected class from all client rows
     const allRows = document.querySelectorAll('.client-row');
@@ -129,14 +128,12 @@ function selectClient(uid: string) {
 
 // Start editing mode
 function startEditing() {
-    console.log("Starting edit mode");
     isEditing = true;
     setFormDisabled(false);
 }
 
 // Save client changes
 function saveClient() {
-    console.log("Saving client", { currentClient, isEditing });
     
     // Create a client data object from the form
     const clientData = {
@@ -155,7 +152,6 @@ function saveClient() {
     
     if (currentClient) {
         // Update existing client
-        console.log("Updating existing client", currentClient.uid);
         Object.assign(currentClient, clientData);
         
         // Parse emails from textarea (one email per line)
@@ -168,7 +164,6 @@ function saveClient() {
         clientDB.updateClient(currentClient);
     } else {
         // Create new client
-        console.log("Creating new client");
         
         // Add emails array to client data
         const emailsText = clientEmailsTextarea.value.trim();
@@ -193,7 +188,6 @@ function saveClient() {
 
 // Clear the form
 function clearForm() {
-    console.log("Clearing form");
     currentClient = null;
     
     // Clear form fields
@@ -223,7 +217,6 @@ function clearForm() {
 
 // Set all form fields to disabled or enabled
 function setFormDisabled(disabled: boolean) {
-    console.log("Setting form disabled:", disabled);
     const formElements = [
         clientNameInput,
         clientFileAsInput,
