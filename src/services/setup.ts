@@ -189,13 +189,13 @@ function writeClientsToLocalStorage() {
         uid: generateUID(),
         name: contact.name,
         file_as: fileAs,
-        emails: [contact.email], // Now using an array of email strings
+        primary_email: contact.email, // Set primary email to the provided email
+        primary_contact: contact.entity === "Company" ? '' : contact.name, // Set primary contact based on entity type
         phone: "",
-        description: `${contact.entity} client`,
+        description: '',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        status: "active",
-        referal_source: ""
+        status: "active"
       };
       
       clients.push(client);

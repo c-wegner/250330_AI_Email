@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
- <head>
+
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet"
@@ -66,6 +67,17 @@
                     </div>
                 </div>
                 <div class="row">
+                    <div class="col" style="width: 30%">
+                        <label for="client_primary_contact">Contact name</label>
+                        <input type="text" id="client_primary_contact" placeholder="Enter contact name">
+                    </div>
+                    <div class="col" style="width: 70%">
+                        <label for="primary_email">Primary email</label>
+                        <input type="text" id="primary_email" placeholder="Enter primary enmail address">
+                    </div>
+                </div>
+
+                <div class="row">
                     <div class="col">
                         <label for="client_emails">Emails</label>
                         <textarea style="resize: none;" id="client_emails" rows="4"
@@ -80,12 +92,6 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col">
-                        <label for="client_referal">Referal source</label>
-                        <input type="text" id="client_referal" placeholder="Enter client name">
-                     </div>
-                </div>
-                <div class="row">
                     <div class="col btn-col">
                         <button id="client_save" class="save-button">Save Client</button>
                     </div>
@@ -95,4 +101,5 @@
     </div>
     <script type="module" src="js/edit.ts"></script>
 </body>
+
 </html>

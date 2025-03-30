@@ -6,6 +6,7 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "outDir": "dist",
-    "strict": true
+    "strict": true,
+    "lib": ["es2016", "dom"]
   }
 }

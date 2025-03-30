@@ -1,4 +1,5 @@
-import { ClientClass, ClientDatabase } from '../../models/client';
+//-------------------------------------------------------
+import { ClientClass, ClientDatabase } from '../../models/clients'; 
 
 // Initialize the client database
 const clientDB = new ClientDatabase();
@@ -8,9 +9,10 @@ const clientList = document.getElementById('client_list') as HTMLDivElement;
 const clientNameInput = document.getElementById('client_name') as HTMLInputElement;
 const clientFileAsInput = document.getElementById('client_file_as') as HTMLInputElement;
 const clientStatusSelect = document.getElementById('client_status') as HTMLSelectElement;
+const clientPrimaryContactInput = document.getElementById('client_primary_contact') as HTMLInputElement;
+const clientPrimaryEmailInput = document.getElementById('primary_email') as HTMLInputElement;
 const clientEmailsTextarea = document.getElementById('client_emails') as HTMLTextAreaElement;
 const clientDescriptionTextarea = document.getElementById('client_description') as HTMLTextAreaElement;
-const clientReferalInput = document.getElementById('client_referal') as HTMLInputElement;
 
 // Buttons
 const editButton = document.getElementById('client_edit') as HTMLDivElement;
@@ -26,11 +28,8 @@ function init() {
     loadClients();
     renderClientList();
     setupEventListeners();
-    
-    // Start with an empty form that's enabled for new client creation
     clearForm();
-    
-    // Hide edit button initially
+
     if (editButton) {
         editButton.style.color = "transparent";
     }
@@ -38,7 +37,6 @@ function init() {
 
 // Load clients from database
 function loadClients() {
-    // This will load clients from localStorage
     clientDB.getClientBook();
 }
 
@@ -47,16 +45,13 @@ function renderClientList() {
     if (clientList) {
         clientList.innerHTML = clientDB.renderClientList();
     }
-
 }
 
 // Setup event listeners
 function setupEventListeners() {
-    // Client selection
     clientList?.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         const clientRow = target.closest('.client-row') as HTMLElement;
-        
         if (clientRow) {
             const uid = clientRow.dataset.uid;
             if (uid) {
@@ -65,19 +60,16 @@ function setupEventListeners() {
         }
     });
 
-    // Edit button
     editButton?.addEventListener('click', () => {
         if (currentClient) {
             startEditing();
         }
     });
 
-    // Save button
     saveButton?.addEventListener('click', () => {
         saveClient();
     });
 
-    // Clear button
     clearButton?.addEventListener('click', () => {
         clearForm();
     });
@@ -85,43 +77,30 @@ function setupEventListeners() {
 
 // Select a client
 function selectClient(uid: string) {
-    
-    // Remove selected class from all client rows
     const allRows = document.querySelectorAll('.client-row');
     allRows.forEach(row => row.classList.remove('selected'));
-    
-    // Add selected class to the clicked row
+
     const selectedRow = document.querySelector(`.client-row[data-uid="${uid}"]`);
     selectedRow?.classList.add('selected');
-    
-    // Get the client from the database
+
     currentClient = clientDB.getClient(uid);
-    
+
     if (currentClient) {
-        // Populate the form
         clientNameInput.value = currentClient.name || '';
         clientFileAsInput.value = currentClient.file_as || '';
         clientStatusSelect.value = currentClient.status || 'active';
-        
-        // Display emails as line-separated list
-        clientEmailsTextarea.value = Array.isArray(currentClient.emails) 
-            ? currentClient.emails.join('\n') 
-            : '';
-            
+        clientPrimaryContactInput.value = currentClient.primary_contact || '';
+        clientPrimaryEmailInput.value = currentClient.primary_email || '';
+        clientEmailsTextarea.value = Array.isArray(currentClient.emails) ? currentClient.emails.join('\n') : '';
         clientDescriptionTextarea.value = currentClient.description || '';
-        clientReferalInput.value = currentClient.referal_source || '';
-        
-        // Disable form fields when a client is selected
+
         setFormDisabled(true);
-        
         isEditing = false;
-        
-        // Show edit button
+
         if (editButton) {
             editButton.style.color = "#0078d4";
         }
-        
-        // Update the save button text
+
         saveButton.textContent = "Update Client";
     }
 }
@@ -134,53 +113,42 @@ function startEditing() {
 
 // Save client changes
 function saveClient() {
-    
-    // Create a client data object from the form
     const clientData = {
         name: clientNameInput.value.trim(),
         file_as: clientFileAsInput.value.trim() || clientNameInput.value.trim(),
         status: clientStatusSelect.value,
-        description: clientDescriptionTextarea.value.trim(),
-        referal_source: clientReferalInput.value.trim()
+        primary_contact: clientPrimaryContactInput.value.trim(),
+        primary_email: clientPrimaryEmailInput.value.trim(),
+        description: clientDescriptionTextarea.value.trim()
     };
-    
-    // Validate required fields
+
     if (!clientData.name) {
         alert("Client name is required");
         return;
     }
-    
+
     if (currentClient) {
-        // Update existing client
         Object.assign(currentClient, clientData);
-        
-        // Parse emails from textarea (one email per line)
+
         const emailsText = clientEmailsTextarea.value.trim();
-        currentClient.emails = emailsText 
+        currentClient.emails = emailsText
             ? emailsText.split('\n').map(email => email.trim()).filter(email => email)
             : [];
-            
+
         currentClient.updated_at = new Date();
         clientDB.updateClient(currentClient);
     } else {
-        // Create new client
-        
-        // Add emails array to client data
         const emailsText = clientEmailsTextarea.value.trim();
-        clientData['emails'] = emailsText 
+        clientData['emails'] = emailsText
             ? emailsText.split('\n').map(email => email.trim()).filter(email => email)
             : [];
-            
+
         currentClient = clientDB.addClient(clientData);
     }
-    
-    // Update UI
+
     renderClientList();
-    
-    // Clear form and reset state after save
     clearForm();
-    
-    // Hide edit button
+
     if (editButton) {
         editButton.style.color = "transparent";
     }
@@ -189,47 +157,41 @@ function saveClient() {
 // Clear the form
 function clearForm() {
     currentClient = null;
-    
-    // Clear form fields
+
     clientNameInput.value = '';
     clientFileAsInput.value = '';
     clientStatusSelect.value = 'active';
+    clientPrimaryContactInput.value = '';
+    clientPrimaryEmailInput.value = '';
     clientEmailsTextarea.value = '';
     clientDescriptionTextarea.value = '';
-    clientReferalInput.value = '';
-    
-    // Remove selected class from all client rows
+
     const allRows = document.querySelectorAll('.client-row');
     allRows.forEach(row => row.classList.remove('selected'));
-    
-    // Enable form for new client entry
+
     setFormDisabled(false);
     isEditing = false;
-    
-    // Hide edit button
+
     if (editButton) {
         editButton.style.color = "transparent";
     }
-    
-    // Update the save button text
+
     saveButton.textContent = "Save Client";
 }
 
-// Set all form fields to disabled or enabled
+// Enable or disable form fields
 function setFormDisabled(disabled: boolean) {
-    const formElements = [
+    [
         clientNameInput,
         clientFileAsInput,
         clientStatusSelect,
+        clientPrimaryContactInput,
+        clientPrimaryEmailInput,
         clientEmailsTextarea,
-        clientDescriptionTextarea,
-        clientReferalInput
-    ];
-    
-    formElements.forEach(element => {
+        clientDescriptionTextarea
+    ].forEach(element => {
         element.disabled = disabled;
     });
 }
 
-// Run initialization when the DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
