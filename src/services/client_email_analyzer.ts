@@ -1,36 +1,15 @@
-// client_email_analyzer.ts
-
-import * as fs from 'fs';
-import * as path from 'path';
-import { spawn } from 'child_process';
-import { ClientPackageClass } from './models/email_packages';
-
-// Constants
-const MODEL_PATH = path.join(process.env.HOME || '', 'llama.cpp/models/nous-hermes/Nous-Hermes-2-Mistral-7B-DPO.Q4_K_S.gguf');
-const LLAMA_CLI_PATH = path.join(process.env.HOME || '', 'llama.cpp/build/bin/llama-cli');
-const TEMP_DIR = path.join(process.env.HOME || '', 'client_analysis_temp');
-
-// Make sure temp directory exists
-if (!fs.existsSync(TEMP_DIR)) {
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
-
+// client_email_analyzer.js - Browser version
+//@ts-nocheck
 /**
  * Utility to strip HTML and clean up text content
  */
-function cleanHtmlContent(html: string): string {
+function cleanHtmlContent(html) {
     if (!html) return '';
     
-    // Basic HTML stripping
-    let text = html.replace(/<[^>]*>/g, ' ');
-    
-    // Handle special characters
-    text = text.replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
+    // Basic HTML stripping - create a temporary DOM element
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    let text = tempDiv.textContent || tempDiv.innerText || '';
     
     // Clean up whitespace
     text = text.replace(/\s+/g, ' ').trim();
@@ -48,9 +27,9 @@ function cleanHtmlContent(html: string): string {
 /**
  * Removes duplicate content like forwarded messages and reply chains
  */
-function deduplicateEmailContent(emails: any[]): any[] {
+function deduplicateEmailContent(emails) {
     const cleanedEmails = [...emails];
-    const contentHashes = new Map<string, number>();
+    const contentHashes = new Map();
     
     for (let i = 0; i < cleanedEmails.length; i++) {
         const email = cleanedEmails[i];
@@ -68,7 +47,7 @@ function deduplicateEmailContent(emails: any[]): any[] {
         
         if (contentHashes.has(significantContent)) {
             // Mark the duplicate but preserve metadata
-            const originalIndex = contentHashes.get(significantContent)!;
+            const originalIndex = contentHashes.get(significantContent);
             const original = cleanedEmails[originalIndex];
             
             // Keep the email with more context/metadata
@@ -91,7 +70,7 @@ function deduplicateEmailContent(emails: any[]): any[] {
 /**
  * Prepare the emails for processing by cleaning and structuring
  */
-function prepareEmailsForAi(clientPackage: ClientPackageClass): string {
+function prepareEmailsForAi(clientPackage) {
     // Combine all emails from the package
     const allEmails = [...clientPackage.from_emails, ...clientPackage.to_emails];
     
@@ -139,7 +118,7 @@ TOTAL EMAILS: ${cleanedEmails.length}
 /**
  * Generate the AI prompt with instructions
  */
-function generatePrompt(emailsText: string): string {
+function generatePrompt(emailsText) {
     return `
 You are a professional legal assistant analyzing client email communications. 
 Review the following emails carefully and provide a structured analysis.
@@ -173,83 +152,9 @@ Format your response in clear sections with headings. Be specific and factual, c
 }
 
 /**
- * Run the local LLM inference using llama.cpp
- */
-async function runLocalInference(prompt: string): Promise<string> {
-    const inputFile = path.join(TEMP_DIR, `prompt_${Date.now()}.txt`);
-    const outputFile = path.join(TEMP_DIR, `response_${Date.now()}.txt`);
-    
-    // Write prompt to file
-    fs.writeFileSync(inputFile, prompt, 'utf8');
-    
-    return new Promise((resolve, reject) => {
-        // Run llama-cli with appropriate settings for RTX 5090
-        const llamaProcess = spawn(LLAMA_CLI_PATH, [
-            '--model', MODEL_PATH,
-            '--file', inputFile,
-            '--n-predict', '4096',
-            '--ctx-size', '8192',
-            '--n-gpu-layers', '-1', // Use all compatible layers on GPU
-            '--temp', '0.1',        // Low temperature for more deterministic output
-            '--top-p', '0.9',
-            '--repeat-penalty', '1.2',
-            '--no-chat',            // Raw prompt mode
-            '--silent-prompt'       // Don't echo prompt
-        ]);
-        
-        let output = '';
-        
-        llamaProcess.stdout.on('data', (data) => {
-            const chunk = data.toString();
-            output += chunk;
-            // Optional: log to console for monitoring
-            console.log(chunk);
-        });
-        
-        llamaProcess.stderr.on('data', (data) => {
-            console.error(`LLM Error: ${data}`);
-        });
-        
-        llamaProcess.on('close', (code) => {
-            if (code !== 0) {
-                reject(new Error(`LLM process exited with code ${code}`));
-                return;
-            }
-            
-            // Write output to file for debugging and save
-            fs.writeFileSync(outputFile, output, 'utf8');
-            resolve(output);
-        });
-    });
-}
-
-/**
- * Process a single client package
- */
-async function processClientPackage(clientPackage: ClientPackageClass): Promise<any> {
-    // Prepare emails
-    console.log(`Processing client: ${clientPackage.client_name}`);
-    const preparedEmails = prepareEmailsForAi(clientPackage);
-    
-    // Generate prompt
-    const prompt = generatePrompt(preparedEmails);
-    
-    // Run inference
-    console.log(`Running analysis for client: ${clientPackage.client_name}`);
-    const aiResponse = await runLocalInference(prompt);
-    
-    // Return structured result
-    return {
-        client_name: clientPackage.client_name,
-        client_uid: clientPackage.client_Uid,
-        analysis: aiResponse,
-    };
-}
-
-/**
  * Generate a summary of all client analyses
  */
-async function generateOverallSummary(clientAnalyses: any[]): Promise<string> {
+function generateSummaryPrompt(clientAnalyses) {
     // Extract tasks and relevant information from all analyses
     const tasksOverview = clientAnalyses.map(analysis => {
         return `
@@ -261,7 +166,7 @@ ${analysis.analysis}
 `;
     }).join('\n');
     
-    const summaryPrompt = `
+    return `
 You are a senior legal practice manager reviewing client analyses. Review the following client analyses and provide a high-level executive summary:
 
 ${tasksOverview}
@@ -285,16 +190,123 @@ Based on these analyses, please provide:
 
 Format your response with clear headings and concise bullet points where appropriate.
 `;
+}
+
+/**
+ * Send a request to the local AI inference server
+
+
+/**
+ * Send a request to the local AI inference server
+ */
+async function runLocalInference(prompt, modelConfig = {}) {
+    try {
+        // Configure with the local server URL - using absolute URL
+        const apiUrl = 'http://localhost:8000/v1/completions';
+        
+        console.log("Attempting to connect to AI server...");
+        
+        // First check if the server is up
+        let statusCheck;
+        try {
+            statusCheck = await fetch('http://localhost:8000/status', {
+                method: 'GET',
+                mode: 'cors', // Important for cross-origin requests
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!statusCheck.ok) {
+                throw new Error(`Server status check failed with status: ${statusCheck.status}`);
+            }
+            
+            const statusData = await statusCheck.json();
+            console.log("AI server status:", statusData);
+            
+        } catch (error) {
+            console.error("Local AI server not available:", error);
+            throw new Error("Local AI server not available. Please ensure the server is running and accessible.");
+        }
+        
+        // Send the actual request
+        console.log("Sending inference request to AI server...");
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            mode: 'cors', // Important for cross-origin requests
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                max_tokens: modelConfig.max_tokens || 4096,
+                temperature: modelConfig.temperature || 0.1,
+                top_p: modelConfig.top_p || 0.9
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log("Received response from AI server");
+        
+        if (!data.choices || !data.choices[0]) {
+            throw new Error("Invalid response format from AI server");
+        }
+        
+        return data.choices[0].text;
+    } catch (error) {
+        console.error("Error calling local inference API:", error);
+        
+        // Return a fallback response for demo/testing
+        if (error.message.includes("Failed to fetch") || 
+            error.message.includes("not available")) {
+            return `[CONNECTION ERROR - AI server unavailable]
+
+The AI analysis feature encountered a connection error. Please check if:
+
+1. The Python server is running with: python llama_server.py
+2. The server URL is correct: http://localhost:8000
+3. There are no firewall or network restrictions blocking the connection
+
+For demo purposes, you can continue exploring the UI, but real AI analysis requires the server to be accessible.`;
+        }
+        
+        throw error;
+    }
+}
+/**
+ * Process a single client package
+ */
+async function processClientPackage(clientPackage) {
+    // Prepare emails
+    console.log(`Processing client: ${clientPackage.client_name}`);
+    const preparedEmails = prepareEmailsForAi(clientPackage);
     
-    // Run the summary analysis
-    console.log("Generating overall practice summary...");
-    return await runLocalInference(summaryPrompt);
+    // Generate prompt
+    const prompt = generatePrompt(preparedEmails);
+    
+    // Run inference
+    console.log(`Running analysis for client: ${clientPackage.client_name}`);
+    const aiResponse = await runLocalInference(prompt);
+    
+    // Return structured result
+    return {
+        client_name: clientPackage.client_name,
+        client_uid: clientPackage.client_Uid,
+        analysis: aiResponse,
+    };
 }
 
 /**
  * Main function to analyze all client packages
  */
-export async function analyzeClientEmailPackages(clientPackages: ClientPackageClass[]): Promise<any> {
+async function analyzeClientEmailPackages(clientPackages) {
     try {
         console.log(`Starting analysis of ${clientPackages.length} client packages`);
         
@@ -306,7 +318,8 @@ export async function analyzeClientEmailPackages(clientPackages: ClientPackageCl
         }
         
         // Generate overall summary
-        const overallSummary = await generateOverallSummary(clientAnalyses);
+        const summaryPrompt = generateSummaryPrompt(clientAnalyses);
+        const overallSummary = await runLocalInference(summaryPrompt);
         
         // Return all analyses plus summary
         return {
@@ -316,20 +329,93 @@ export async function analyzeClientEmailPackages(clientPackages: ClientPackageCl
     } catch (error) {
         console.error("Error analyzing client emails:", error);
         throw error;
-    } finally {
-        // Cleanup temp files
-        console.log("Cleaning up temporary files...");
-        try {
-            const tempFiles = fs.readdirSync(TEMP_DIR);
-            tempFiles.forEach(file => {
-                if (file.startsWith('prompt_') || file.startsWith('response_')) {
-                    fs.unlinkSync(path.join(TEMP_DIR, file));
-                }
-            });
-        } catch (err) {
-            console.error("Error cleaning up:", err);
-        }
     }
+}
+
+/**
+ * Display the AI analysis results in the UI
+ */
+function displayAnalysisResults(results) {
+    const emailListElement = document.getElementById("emailList");
+    
+    // Create a container for the results
+    const resultsContainer = document.createElement("div");
+    resultsContainer.className = "analysis-results";
+    
+    // Add the overall summary
+    const summarySection = document.createElement("div");
+    summarySection.className = "overall-summary mb-5 p-4 border rounded bg-light";
+    summarySection.innerHTML = `
+        <h2>Practice Overview</h2>
+        <div class="summary-content">
+            <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(results.overall_summary)}</pre>
+        </div>
+    `;
+    resultsContainer.appendChild(summarySection);
+    
+    // Add a button to toggle showing individual analyses
+    const toggleButton = document.createElement("button");
+    toggleButton.className = "btn btn-secondary mb-3";
+    toggleButton.textContent = "Show/Hide Individual Client Analyses";
+    resultsContainer.appendChild(toggleButton);
+    
+    // Create a container for individual analyses
+    const individualAnalyses = document.createElement("div");
+    individualAnalyses.className = "individual-analyses";
+    individualAnalyses.style.display = "none";
+    
+    // Add each client analysis
+    results.client_analyses.forEach((analysis, index) => {
+        const clientSection = document.createElement("div");
+        clientSection.className = "client-analysis mb-4 p-3 border rounded";
+        
+        // Determine if there are urgent tasks for highlighting
+        const hasUrgentTasks = analysis.analysis.toLowerCase().includes("urgency: high") ||
+                              analysis.analysis.toLowerCase().includes("high urgency");
+        
+        // Add highlight class if urgent
+        if (hasUrgentTasks) {
+            clientSection.classList.add("border-danger");
+        }
+        
+        clientSection.innerHTML = `
+            <h3>${escapeHtml(analysis.client_name)}</h3>
+            <div class="analysis-content">
+                <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(analysis.analysis)}</pre>
+            </div>
+        `;
+        individualAnalyses.appendChild(clientSection);
+    });
+    
+    resultsContainer.appendChild(individualAnalyses);
+    
+    // Add toggle functionality
+    toggleButton.addEventListener("click", () => {
+        individualAnalyses.style.display = 
+            individualAnalyses.style.display === "none" ? "block" : "none";
+    });
+    
+    // Clear previous content and add the results
+    emailListElement.innerHTML = "";
+    emailListElement.appendChild(resultsContainer);
+    
+    // Add export functionality
+    const exportButton = document.createElement("button");
+    exportButton.className = "btn btn-success mt-3";
+    exportButton.textContent = "Export Analysis to JSON";
+    exportButton.addEventListener("click", () => {
+        // Create download link
+        const dataStr = "data:text/json;charset=utf-8," + 
+            encodeURIComponent(JSON.stringify(results, null, 2));
+        const downloadAnchor = document.createElement("a");
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "client_analysis_" + new Date().toISOString() + ".json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+    });
+    
+    emailListElement.appendChild(exportButton);
 }
 
 // Example usage:
