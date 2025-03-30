@@ -1,29 +1,11 @@
 //@ts-nocheck
 //models/client.ts
 
-export interface IEmail{
-    address: string; // The email address
-    name?: string; // The name associated with the email address
-    role: string; // email account holder role (position, title, relationship to the client, etc.)
-    principal: boolean; // email belongs to the client (true) or to a representative (false)
-    primary: boolean; // this is the primary email address for the client
-}
-
-const getUID = (clients:ClientClass[]): string => {
-    let generatedUID = (Math.random() * 1000000).toFixed(36); // Generate a random UID
-    // Ensure the generated UID is unique within the existing clients
-    while (clients.some(client => client.uid === generatedUID)) {
-        generatedUID = (Math.random() * 1000000).toFixed(36); // Regenerate if UID already exists
-    }
-    return generatedUID; // Return the unique UID
-}
-
-
-export class ClientClass{
+export class ClientClass {
     uid: string;
     name: string;
     file_as: string;
-    emails: string[]; // Array of email addresses associated with the client
+    emails: string[]; // Array of email addresses as strings
     phone: string;
     description: string;
     created_at: Date;
@@ -32,22 +14,33 @@ export class ClientClass{
     referal_source: string; // how the client was referred (e.g., website, word of mouth, etc.)
 
     constructor(data={}) {
-        this.emails = []; // Initialize emails array
-        
+        this.emails = []; // Initialize emails array        
         // Assign all properties directly without hasOwnProperty check
         Object.assign(this, data);
-        console.log(this.emails)
     }
 
-    getPrimaryEmail(): IEmail | undefined {
-        if(this.emails){
-            return(this.emails[0])
-            }
+    getPrimaryEmail(): string | undefined {
+        if(this.emails && Array.isArray(this.emails) && this.emails.length > 0) {
+            return this.emails[0];
+        }
+        return undefined;
     }
 
-    setPrimaryEmail(emailAddress: string):void {
-        if(this.emails){
-        console.log(this.emails[0])
+    setPrimaryEmail(emailAddress: string): void {
+        if(!this.emails || !Array.isArray(this.emails)) {
+            this.emails = [];
+        }
+        
+        // If the email exists, move it to the first position
+        const index = this.emails.indexOf(emailAddress);
+        if (index > 0) {
+            // Remove from current position
+            this.emails.splice(index, 1);
+            // Add to beginning
+            this.emails.unshift(emailAddress);
+        } else if (index === -1 && emailAddress) {
+            // If email doesn't exist, add it as the primary
+            this.emails.unshift(emailAddress);
         }
     }
     
@@ -57,46 +50,13 @@ export class ClientClass{
             return '';
         }
         
-        return this.emails.map(email => {
-            const parts = [email.address];
-            if (email.name) parts.push(`name: ${email.name}`);
-            parts.push(`role: ${email.role}`);
-            parts.push(`principal: ${email.principal}`);
-            parts.push(`primary: ${email.primary}`);
-            return parts.join(', ');
-        }).join('\n');
+        return this.emails.join('\n');
     }
     
     // Method to set emails from textarea text
     setEmailsFromText(text: string): void {
         const lines = text.split('\n').filter(line => line.trim());
-        this.emails = [];
-        
-        lines.forEach(line => {
-            const parts = line.split(',').map(p => p.trim());
-            const email: IEmail = {
-                address: parts[0],
-                role: 'Contact',
-                principal: false,
-                primary: false
-            };
-            
-            // Parse additional properties
-            parts.slice(1).forEach(part => {
-                const [key, value] = part.split(':').map(p => p.trim());
-                if (key === 'name') email.name = value;
-                if (key === 'role') email.role = value;
-                if (key === 'principal') email.principal = value === 'true';
-                if (key === 'primary') email.primary = value === 'true';
-            });
-            
-            this.emails.push(email);
-        });
-        
-        // Ensure at least one email is primary
-        if (this.emails.length > 0 && !this.emails.some(e => e.primary)) {
-            this.emails[0].primary = true;
-        }
+        this.emails = lines.map(line => line.trim());
     }
 }
 
@@ -118,7 +78,7 @@ export class ClientDatabase{
         const newClient = new ClientClass(clientData);
         newClient.created_at = new Date(); // Set the created_at date for the new client
         newClient.updated_at = new Date(); // Set the updated_at date for the new client
-        newClient.uid = getUID(this.clients); // Generate a unique UID for the new client
+        newClient.uid = this.generateUID(); // Generate a unique UID for the new client
         this.clients.push(newClient);
         this.clients.sort((a, b) => a.file_as.localeCompare(b.file_as)); // Sort clients alphabetically by name after adding
         this.save(); // Save changes
@@ -165,6 +125,7 @@ export class ClientDatabase{
             this.clients = [];
         }
     }
+    
     // Render clients as HTML for the client list
     renderClientList(): string {
         if (this.clients.length === 0) {
@@ -192,6 +153,14 @@ export class ClientDatabase{
     load(): void {
         // Alias for getClientBook to maintain compatibility
         this.getClientBook();
-        console.log(this.clients[1])
+    }
+    
+    generateUID(): string {
+        let generatedUID = (Math.random() * 1000000).toFixed(36); // Generate a random UID
+        // Ensure the generated UID is unique within the existing clients
+        while (this.clients.some(client => client.uid === generatedUID)) {
+            generatedUID = (Math.random() * 1000000).toFixed(36); // Regenerate if UID already exists
+        }
+        return generatedUID; // Return the unique UID
     }
 }

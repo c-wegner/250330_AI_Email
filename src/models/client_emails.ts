@@ -52,74 +52,39 @@ export class ClientPackageClass {
  * @param clientDB The client database instance
  * @returns Array of ClientPackageClass objects
  */
+
+/**
+ * Processes fetched emails and associates them with clients
+ * @param sentEmails Array of sent emails from Microsoft Graph API
+ * @param receivedEmails Array of received emails from Microsoft Graph API
+ * @param clientDB The client database instance
+ * @returns Array of ClientPackageClass objects
+ */
+
+
+/**
+ * Processes fetched emails and associates them with clients
+ * @param sentEmails Array of sent emails from Microsoft Graph API
+ * @param receivedEmails Array of received emails from Microsoft Graph API
+ * @param clientDB The client database instance
+ * @returns Array of ClientPackageClass objects
+ */
 export function processClientEmails(sentEmails, receivedEmails, clientDB) {
-    // Get all client emails for matching
+    // Create maps for quick lookups
     const clientEmailMap = new Map();
     const clientPackages = new Map();
-
-    // Add this to your processEmails function in client-emails.ts
-
-    // At the beginning of processEmails function:
-    console.log("Starting to process emails for client matching");
-    console.log("Received emails count:", receivedEmails?.length || 0);
-    console.log("Sent emails count:", sentEmails?.length || 0);
-    console.log("Client count:", clientDB.clients?.length || 0);
-
-    // After building the client email map:
-    console.log("Client email map built with", clientEmailMap.size, "entries");
-    // Log a few sample entries to verify format
-    if (clientEmailMap.size > 0) {
-        const sampleEntries = Array.from(clientEmailMap.entries()).slice(0, 3);
-        console.log("Sample email map entries:", sampleEntries);
-    }
-
-    // Inside the received emails processing:
-    receivedEmails.forEach(email => {
-        if (!email.from || !email.from.emailAddress || !email.from.emailAddress.address) {
-            console.log("Skipping email with invalid from address", email.subject);
-            return;
-        }
-
-        const senderEmail = email.from.emailAddress.address.toLowerCase();
-        console.log("Checking received email from:", senderEmail);
-
-        const clientInfo = clientEmailMap.get(senderEmail);
-        if (clientInfo) {
-            console.log("MATCH FOUND: Email from client:", senderEmail);
-        }
-    });
-
-    // Similar debugging for sent emails:
-    sentEmails.forEach(email => {
-        if (!email.toRecipients || !Array.isArray(email.toRecipients)) {
-            console.log("Skipping sent email with invalid recipients", email.subject);
-            return;
-        }
-
-        email.toRecipients.forEach(recipient => {
-            if (!recipient.emailAddress || !recipient.emailAddress.address) return;
-
-            const recipientEmail = recipient.emailAddress.address.toLowerCase();
-            console.log("Checking sent email to:", recipientEmail);
-
-            const clientInfo = clientEmailMap.get(recipientEmail);
-            if (clientInfo) {
-                console.log("MATCH FOUND: Email to client:", recipientEmail);
-            }
-        });
-    });
-
+    
     // Build a map of all client emails for quick lookup
     clientDB.clients.forEach(client => {
-        if (client.emails && Array.isArray(client.emails) && client.emails.length > 0) {
+        if (client.emails && Array.isArray(client.emails)) {
             // Create a package for this client
             const packageId = client.uid;
             const clientPackage = new ClientPackageClass(client);
             clientPackages.set(packageId, clientPackage);
-
+            
             // Map all client emails to this client's package
             client.emails.forEach(emailAddress => {
-                if (emailAddress && typeof emailAddress === 'string') {
+                if (typeof emailAddress === 'string') {
                     clientEmailMap.set(emailAddress.toLowerCase(), {
                         clientUid: client.uid
                     });
@@ -127,58 +92,85 @@ export function processClientEmails(sentEmails, receivedEmails, clientDB) {
             });
         }
     });
-
-    console.log(`Mapped ${clientEmailMap.size} client email addresses for matching`);
-
+    
     // Process received emails - these are FROM clients TO me
-    if (receivedEmails && Array.isArray(receivedEmails)) {
-        receivedEmails.forEach(email => {
-            if (!email.from || !email.from.emailAddress || !email.from.emailAddress.address) return;
-
-            // Get the sender email address
-            const senderEmail = email.from.emailAddress.address.toLowerCase();
-
-            // Check if sender is a client
-            const clientInfo = clientEmailMap.get(senderEmail);
-            if (clientInfo) {
-                // Create email object
-                const clientEmail = new ClientEmailClass({
-                    id: email.id || Math.random().toString(36).substring(2, 15),
-                    subject: email.subject || "(No subject)",
-                    body: email.body?.content || "",
-                    dateReceived: email.receivedDateTime ? new Date(email.receivedDateTime) : new Date(),
-                    from: {
-                        email: email.from.emailAddress.address,
-                        name: email.from.emailAddress.name || ""
-                    },
-                    toRecipients: email.toRecipients ? email.toRecipients.map(r => ({
-                        email: r.emailAddress.address,
-                        name: r.emailAddress.name || ""
-                    })) : []
+// Process received emails - these are FROM clients TO me
+if (receivedEmails && Array.isArray(receivedEmails)) {
+    receivedEmails.forEach(email => {
+        if (!email.from || !email.from.emailAddress || !email.from.emailAddress.address) return;
+        
+        // Get the sender email address
+        const senderEmail = email.from.emailAddress.address.toLowerCase();
+        
+        // Check if sender matches ANY email associated with ANY client
+        let matchedClient = null;
+        
+        // Loop through all clients to check for related email addresses
+        clientDB.clients.forEach(client => {
+            if (client.emails && Array.isArray(client.emails)) {
+                // Check if this email matches any of the client's emails
+                client.emails.forEach(clientEmail => {
+                    if (typeof clientEmail === 'string' && 
+                        senderEmail.includes(clientEmail.toLowerCase()) || 
+                        clientEmail.toLowerCase().includes(senderEmail)) {
+                        // Found a match with this client's email
+                        matchedClient = {
+                            clientUid: client.uid,
+                            clientName: client.name,
+                            matchType: 'related'
+                        };
+                    }
                 });
-
-                // Get client package
-                const clientPackage = clientPackages.get(clientInfo.clientUid);
-                if (clientPackage) {
-                    // Add to emailsFrom for this client (since it's FROM client TO me)
-                    clientPackage.emailsFrom.push(clientEmail);
-                }
             }
         });
-    }
-
+        
+        // If we found a match, create the email and add it to the client's package
+        if (matchedClient) {
+            // Create email object
+            const clientEmail = new ClientEmailClass({
+                id: email.id || Math.random().toString(36).substring(2, 15),
+                subject: email.subject || "(No subject)",
+                body: email.body?.content || "",
+                dateReceived: email.receivedDateTime ? new Date(email.receivedDateTime) : new Date(),
+                from: {
+                    email: email.from.emailAddress.address,
+                    name: email.from.emailAddress.name || ""
+                },
+                toRecipients: email.toRecipients ? email.toRecipients.map(r => ({
+                    email: r.emailAddress.address,
+                    name: r.emailAddress.name || ""
+                })) : []
+            });
+            
+            // Get or create client package
+            if (!clientPackages.has(matchedClient.clientUid)) {
+                const client = clientDB.getClient(matchedClient.clientUid);
+                if (client) {
+                    clientPackages.set(matchedClient.clientUid, new ClientPackageClass(client));
+                }
+            }
+            
+            // Add to emailsFrom for this client
+            const clientPackage = clientPackages.get(matchedClient.clientUid);
+            if (clientPackage) {
+                clientPackage.emailsFrom.push(clientEmail);
+                console.log(`Added email from ${senderEmail} to client ${matchedClient.clientName} (${matchedClient.matchType} match)`);
+            }
+        }
+    });
+}
     // Process sent emails - these are FROM me TO clients
     if (sentEmails && Array.isArray(sentEmails)) {
         sentEmails.forEach(email => {
             if (!email.toRecipients) return;
-
+            
             // Process each recipient
             email.toRecipients.forEach(recipient => {
                 if (!recipient.emailAddress || !recipient.emailAddress.address) return;
-
+                
                 // Get recipient email address
                 const recipientEmail = recipient.emailAddress.address.toLowerCase();
-
+                
                 // Check if recipient is a client
                 const clientInfo = clientEmailMap.get(recipientEmail);
                 if (clientInfo) {
@@ -197,24 +189,52 @@ export function processClientEmails(sentEmails, receivedEmails, clientDB) {
                             name: r.emailAddress.name || ""
                         })) : []
                     });
-
+                    
                     // Get client package
                     const clientPackage = clientPackages.get(clientInfo.clientUid);
                     if (clientPackage) {
-                        // Add to emailsTo for this client (since it's TO client FROM me)
+                        // Add to emailsTo for this client
                         clientPackage.emailsTo.push(clientEmail);
                     }
                 }
             });
         });
     }
+    // At the end of processClientEmails function, before returning result:
+console.log(`===== CLIENT EMAIL PACKAGES =====`);
+// Add this at the end of processClientEmails function before returning the result
+console.log(`===== CLIENT EMAIL PACKAGES =====`);
+const result = Array.from(clientPackages.values()).filter(
+    pkg => pkg.emailsFrom.length > 0 || pkg.emailsTo.length > 0
+);
 
-    // Return all client packages that have emails
-    return Array.from(clientPackages.values()).filter(
-        pkg => pkg.emailsFrom.length > 0 || pkg.emailsTo.length > 0
-    );
+console.log(`Found ${result.length} clients with email activity`);
+
+result.forEach((pkg, index) => {
+    console.log(`Client Package ${index + 1}: ${pkg.principalName} (${pkg.principalEmail})`);
+    console.log(`Emails From Client: ${pkg.emailsFrom.length}`);
+    
+    // List each email FROM the client
+    if (pkg.emailsFrom.length > 0) {
+        pkg.emailsFrom.forEach((email, i) => {
+            console.log(`  From Email #${i+1}: ${email.subject} (${new Date(email.dateReceived).toLocaleDateString()})`);
+        });
+    }
+    
+    console.log(`Emails To Client: ${pkg.emailsTo.length}`);
+    
+    // List each email TO the client
+    if (pkg.emailsTo.length > 0) {
+        pkg.emailsTo.forEach((email, i) => {
+            console.log(`  To Email #${i+1}: ${email.subject} (${new Date(email.dateSent || email.dateReceived).toLocaleDateString()})`);
+        });
+    }
+    
+    console.log("---------------------");
+});
+
+return result;
 }
-
 // Function to update email.ts click event handler
 export function initializeEmailProcessing() {
     document.addEventListener("DOMContentLoaded", () => {

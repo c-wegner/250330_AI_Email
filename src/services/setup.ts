@@ -2,6 +2,15 @@
 //@ts-nocheck
 
 function writeClientsToLocalStorage() {
+
+      // Check if clients already exist in localStorage
+      const existingClientsData = localStorage.getItem('clientBook');
+    
+      // If clients already exist, don't overwrite them
+      if (existingClientsData && JSON.parse(existingClientsData).length > 0) {
+          console.log("Clients already exist in localStorage. Skipping import.");
+          return JSON.parse(existingClientsData);
+      }
     // Format the clients correctly
     const clients = [];
     
