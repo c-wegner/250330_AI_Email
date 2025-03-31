@@ -35,8 +35,25 @@
             <div id="loadingSpinner" style="display: none;">Loading...</div>
             <div id="emailList"></div>
         </div>
+        <div id="test-btn">Test</div>
     </div>
-
+    <script>
+        function sendQuestion() {
+            const msg ='helo I am testing, what is your cats name?'
+            fetch('http://localhost:5005/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("output").textContent = data.response || data.error;
+                });
+        }
+        document.getElementById("test-btn").addEventListener("click", function () {
+            sendQuestion()
+        });
+    </script>
     <!-- Microsoft Authentication Library -->
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
 
